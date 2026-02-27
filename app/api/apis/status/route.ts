@@ -9,6 +9,12 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const force = url.searchParams.get("force") === "1";
   const slug = (url.searchParams.get("slug") || "").trim();
+  const defaultInternalOrigin = `http://127.0.0.1:${process.env.PORT || "3000"}`;
+  const preferredBaseOrigin = (
+    process.env.INTERNAL_APP_ORIGIN ||
+    process.env.INTERNAL_BASE_ORIGIN ||
+    (process.env.NODE_ENV === "production" ? defaultInternalOrigin : url.origin)
+  ).replace(/\/+$/, "");
   const apis = await getMarketplaceApis();
 
   if (slug) {
@@ -18,8 +24,8 @@ export async function GET(request: Request) {
     }
 
     const snapshot = force
-      ? await getSingleApiHealthSnapshot({ api: target, baseOrigin: url.origin })
-      : (await getApiHealthSnapshots({ apis, baseOrigin: url.origin, force: false })).snapshots[target.slug];
+      ? await getSingleApiHealthSnapshot({ api: target, baseOrigin: preferredBaseOrigin })
+      : (await getApiHealthSnapshots({ apis, baseOrigin: preferredBaseOrigin, force: false })).snapshots[target.slug];
 
     return NextResponse.json(
       {
@@ -44,7 +50,7 @@ export async function GET(request: Request) {
 
   const health = await getApiHealthSnapshots({
     apis,
-    baseOrigin: url.origin,
+    baseOrigin: preferredBaseOrigin,
     force,
   });
 
