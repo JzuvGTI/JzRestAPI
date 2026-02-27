@@ -1,16 +1,12 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
+
+import { auth } from "@/auth";
 
 const AUTH_PAGES = new Set(["/login", "/register"]);
 
-export async function proxy(request: NextRequest) {
-  const token = await getToken({
-    req: request,
-    secret: process.env.NEXTAUTH_SECRET,
-  });
-
-  const isAuthenticated = Boolean(token);
+export const proxy = auth((request: NextRequest & { auth: { user?: { role?: string } } | null }) => {
+  const isAuthenticated = Boolean(request.auth?.user);
   const { pathname } = request.nextUrl;
   const isDashboardRoute = pathname.startsWith("/dashboard");
   const isAdminRoute = pathname.startsWith("/dashboard/admin");
@@ -26,12 +22,12 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  if (isAuthenticated && isAdminRoute && token?.role !== "SUPERADMIN") {
+  if (isAuthenticated && isAdminRoute && request.auth?.user?.role !== "SUPERADMIN") {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   return NextResponse.next();
-}
+});
 
 export const config = {
   matcher: ["/dashboard/:path*", "/login", "/register"],
