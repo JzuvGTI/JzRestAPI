@@ -7,6 +7,7 @@ const geist = Geist({
   variable: "--font-geist",
   subsets: ["latin"],
 });
+const ICON_VERSION = "20260227a";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://api.jzuv.my.id"),
@@ -16,9 +17,13 @@ export const metadata: Metadata = {
   },
   description: "High-performance API platform for modern apps with secure authentication and dashboard controls.",
   icons: {
-    icon: "/icon.png",
-    apple: "/apple-icon.png",
-    shortcut: "/icon.png",
+    icon: [
+      { url: `/favicon.ico?v=${ICON_VERSION}`, sizes: "any" },
+      { url: `/icon.png?v=${ICON_VERSION}`, type: "image/png", sizes: "32x32" },
+      { url: `/icon.png?v=${ICON_VERSION}`, type: "image/png", sizes: "192x192" },
+    ],
+    apple: [{ url: `/apple-icon.png?v=${ICON_VERSION}`, sizes: "180x180", type: "image/png" }],
+    shortcut: [`/favicon.ico?v=${ICON_VERSION}`],
   },
   openGraph: {
     title: "JzREST API",
