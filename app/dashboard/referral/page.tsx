@@ -17,7 +17,11 @@ export default async function DashboardReferralPage() {
     redirect("/login");
   }
 
-  const publicBaseUrl = (process.env.NEXTAUTH_URL || "http://localhost:3000").replace(/\/+$/, "");
+  const publicBaseUrl = (
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "https://api.jzuv.my.id"
+  ).replace(/\/+$/, "");
   const referralLink = `${publicBaseUrl}/register?ref=${currentUser.referralCode}`;
 
   const oneYearAgo = new Date();
