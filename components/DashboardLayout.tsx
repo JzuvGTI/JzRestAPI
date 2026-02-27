@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
+  FaChevronDown,
   FaChartLine,
   FaCode,
   FaFileInvoiceDollar,
@@ -36,6 +37,21 @@ type BanState = {
   message: string | null;
 };
 
+type SidebarItem = {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+};
+
+type SidebarDropdownKey = "tools" | "account";
+
+type SidebarDropdown = {
+  key: SidebarDropdownKey;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  items: SidebarItem[];
+};
+
 const planClasses: Record<DashboardLayoutProps["userPlan"], string> = {
   FREE: "bg-zinc-700/60 text-zinc-100",
   PAID: "bg-emerald-600/70 text-emerald-50",
@@ -52,19 +68,40 @@ export default function DashboardLayout({
 }: DashboardLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [banState, setBanState] = useState<BanState | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Record<SidebarDropdownKey, boolean>>({
+    tools: true,
+    account: false,
+  });
   const pathname = usePathname();
 
-  const sidebarItems = [
-    { href: "/dashboard", label: "Dashboard", icon: FaChartLine },
-    { href: "/dashboard/profile", label: "Profile", icon: FaUserCircle },
-    { href: "/dashboard/apis", label: "REST API LIST", icon: FaCode },
-    { href: "/dashboard/api-keys", label: "Manage API KEY", icon: FaKey },
-    { href: "/dashboard/billing", label: "Billing", icon: FaFileInvoiceDollar },
-    { href: "/dashboard/referral", label: "Referral Program", icon: FaUserFriends },
-    ...(userRole === "SUPERADMIN"
-      ? [{ href: "/dashboard/admin", label: "Super Admin", icon: FaUserShield }]
-      : []),
+  const topLevelItems: SidebarItem[] = [{ href: "/dashboard", label: "Dashboard", icon: FaChartLine }];
+  const dropdownSections: SidebarDropdown[] = [
+    {
+      key: "tools",
+      label: "API & Tools",
+      icon: FaCode,
+      items: [
+        { href: "/dashboard/apis", label: "REST API LIST", icon: FaCode },
+        { href: "/dashboard/api-keys", label: "Manage API KEY", icon: FaKey },
+        { href: "/dashboard/billing", label: "Billing", icon: FaFileInvoiceDollar },
+        { href: "/dashboard/referral", label: "Referral Program", icon: FaUserFriends },
+      ],
+    },
+    {
+      key: "account",
+      label: "Account",
+      icon: FaUserCircle,
+      items: [{ href: "/dashboard/profile", label: "Profile", icon: FaUserCircle }],
+    },
   ];
+
+  const isRouteActive = (href: string) => {
+    if (href === "/dashboard") {
+      return pathname === href;
+    }
+
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
 
   useEffect(() => {
     let stopped = false;
@@ -101,6 +138,18 @@ export default function DashboardLayout({
       clearInterval(interval);
     };
   }, []);
+
+  useEffect(() => {
+    setExpandedSections((previous) => {
+      const next = { ...previous };
+      for (const section of dropdownSections) {
+        if (section.items.some((item) => isRouteActive(item.href))) {
+          next[section.key] = true;
+        }
+      }
+      return next;
+    });
+  }, [pathname]);
 
   return (
     <div className="relative min-h-screen overflow-x-hidden text-zinc-100">
@@ -140,8 +189,8 @@ export default function DashboardLayout({
           isSidebarOpen ? "translate-x-0" : "-translate-x-full",
         ].join(" ")}
       >
-        <div className="flex h-full flex-col overflow-y-auto pr-1">
-          <div className="mb-6 flex items-start justify-between gap-2 md:block">
+        <div className="flex h-full min-h-0 flex-col">
+          <div className="mb-4 flex items-start justify-between gap-2 md:block">
             <div>
               <p className="text-xs uppercase tracking-[0.24em] text-zinc-500">api.jzuv.my.id</p>
               <h2 className="mt-2 text-lg font-semibold text-zinc-100">JzREST API Panel</h2>
@@ -156,17 +205,14 @@ export default function DashboardLayout({
             </button>
           </div>
 
-          <nav className="space-y-2">
-            {sidebarItems.map((item) => {
-              const isActive =
-                item.href === "/dashboard"
-                  ? pathname === item.href
-                  : pathname === item.href || pathname.startsWith(`${item.href}/`);
+          <nav className="scrollbar-themed min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 pb-6">
+            {topLevelItems.map((item) => {
+              const isActive = isRouteActive(item.href);
               const Icon = item.icon;
 
               return (
                 <Link
-                  key={item.label}
+                  key={item.href}
                   href={item.href}
                   className={[
                     "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors duration-200",
@@ -181,18 +227,127 @@ export default function DashboardLayout({
                 </Link>
               );
             })}
+
+            {dropdownSections.map((section) => {
+              const isExpanded = expandedSections[section.key];
+              const isSectionActive = section.items.some((item) => isRouteActive(item.href));
+              const SectionIcon = section.icon;
+
+              return (
+                <div key={section.key}>
+                  <button
+                    type="button"
+                    className={[
+                      "flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors duration-200",
+                      isSectionActive
+                        ? "bg-zinc-800/70 text-zinc-100"
+                        : "text-zinc-300 hover:bg-zinc-800/70 hover:text-zinc-100",
+                    ].join(" ")}
+                    onClick={() =>
+                      setExpandedSections((previous) => ({
+                        ...previous,
+                        [section.key]: !previous[section.key],
+                      }))
+                    }
+                    aria-expanded={isExpanded}
+                    aria-controls={`sidebar-section-${section.key}`}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <SectionIcon className="text-sm" />
+                      <span>{section.label}</span>
+                    </span>
+                    <FaChevronDown
+                      className={[
+                        "text-[10px] transition-transform duration-200",
+                        isExpanded ? "rotate-180" : "rotate-0",
+                      ].join(" ")}
+                    />
+                  </button>
+
+                  <div
+                    id={`sidebar-section-${section.key}`}
+                    className={[
+                      "overflow-hidden transition-all duration-200",
+                      isExpanded ? "max-h-[420px] opacity-100" : "max-h-0 opacity-0",
+                    ].join(" ")}
+                  >
+                    <div className="relative ml-5 mt-1 pl-3">
+                      <span
+                        aria-hidden
+                        className="pointer-events-none absolute left-0 top-0 bottom-0 w-px bg-zinc-700/80"
+                      />
+                      <div className="space-y-1">
+                        {section.items.map((item, index) => {
+                          const isActive = isRouteActive(item.href);
+                          const Icon = item.icon;
+
+                          return (
+                            <Link
+                              key={item.href}
+                              href={item.href}
+                              tabIndex={isExpanded ? 0 : -1}
+                              aria-hidden={!isExpanded}
+                              style={{
+                                transitionDelay: isExpanded ? `${index * 40}ms` : "0ms",
+                              }}
+                              className={[
+                                "group relative flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm",
+                                "transition-[opacity,transform,background-color,color] duration-200 ease-out",
+                                isExpanded ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-1 opacity-0",
+                                isActive
+                                  ? "bg-zinc-100 text-zinc-900"
+                                  : "text-zinc-300 hover:bg-zinc-800/70 hover:text-zinc-100",
+                              ].join(" ")}
+                              onClick={() => setIsSidebarOpen(false)}
+                            >
+                              <span
+                                aria-hidden
+                                className={[
+                                  "pointer-events-none absolute -left-3 top-1/2 h-px w-3 -translate-y-1/2",
+                                  isActive ? "bg-zinc-300/80" : "bg-zinc-700/80 group-hover:bg-zinc-500/80",
+                                ].join(" ")}
+                              />
+                              <Icon className="text-xs" />
+                              <span>{item.label}</span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {userRole === "SUPERADMIN" ? (
+              <Link
+                href="/dashboard/admin"
+                className={[
+                  "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors duration-200",
+                  isRouteActive("/dashboard/admin")
+                    ? "bg-zinc-100 text-zinc-900"
+                    : "text-zinc-300 hover:bg-zinc-800/70 hover:text-zinc-100",
+                ].join(" ")}
+                onClick={() => setIsSidebarOpen(false)}
+              >
+                <FaUserShield className="text-sm" />
+                <span>Super Admin</span>
+              </Link>
+            ) : null}
           </nav>
 
-          <div className="mt-auto rounded-xl border border-zinc-800 bg-zinc-900/80 p-4">
-            <p className="text-xs uppercase tracking-wide text-zinc-500">Current plan</p>
-            <span className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${planClasses[userPlan]}`}>
-              {userPlan}
-            </span>
-            <p className="mt-3 text-xs uppercase tracking-wide text-zinc-500">Role</p>
-            <span className="mt-2 inline-flex rounded-full bg-zinc-800/80 px-2.5 py-1 text-xs font-semibold text-zinc-100">
-              {userRole}
-            </span>
-            <p className="mt-3 text-xs text-zinc-400">Kelola limit, API, referral, dan akses akun dari panel ini.</p>
+          <div className="border-t border-zinc-800/80 pt-3">
+            <div className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-4">
+              <p className="text-xs uppercase tracking-wide text-zinc-500">Current plan</p>
+              <span className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${planClasses[userPlan]}`}>
+                {userPlan}
+              </span>
+              <p className="mt-3 text-xs uppercase tracking-wide text-zinc-500">Role</p>
+              <span className="mt-2 inline-flex rounded-full bg-zinc-800/80 px-2.5 py-1 text-xs font-semibold text-zinc-100">
+                {userRole}
+              </span>
+              <p className="mt-3 text-xs text-zinc-400">Kelola limit, API, referral, dan akses akun dari panel ini.</p>
+            </div>
           </div>
         </div>
       </aside>

@@ -21,6 +21,30 @@ body {
   font-family: var(--font-geist), "Segoe UI", sans-serif;
 }
 
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(113, 113, 122, 0.75) rgba(24, 24, 27, 0.55);
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(24, 24, 27, 0.55);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(113, 113, 122, 0.75);
+  border-radius: 999px;
+  border: 2px solid rgba(24, 24, 27, 0.55);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(161, 161, 170, 0.88);
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -95,4 +119,37 @@ body {
 
 .animate-toast-out {
   animation: toast-out 0.18s ease-in both;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-themed {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(113, 113, 122, 0.75) rgba(24, 24, 27, 0.55);
+}
+
+.scrollbar-themed::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scrollbar-themed::-webkit-scrollbar-track {
+  background: rgba(24, 24, 27, 0.55);
+  border-radius: 999px;
+}
+
+.scrollbar-themed::-webkit-scrollbar-thumb {
+  background: rgba(113, 113, 122, 0.75);
+  border-radius: 999px;
+  border: 2px solid rgba(24, 24, 27, 0.55);
+}
+
+.scrollbar-themed::-webkit-scrollbar-thumb:hover {
+  background: rgba(161, 161, 170, 0.85);
 }

@@ -180,11 +180,11 @@ export default async function HomePage() {
               High-performance API services for modern apps
             </p>
             <h1 className="text-4xl font-semibold leading-tight tracking-tight text-zinc-900 dark:text-zinc-100 md:text-5xl">
-              Scale your product faster with reliable API infrastructure.
+              Menyediakan berbagai macam API siap pakai untuk kebutuhan automation bot dan integrasi.
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
-              Satu panel, banyak layanan API siap pakai. Mulai dari plan FREE untuk eksplorasi sampai RESELLER
-              untuk bisnis, dengan dashboard yang simpel, aman, dan siap produksi.
+              Cocok untuk bot WhatsApp, bot Telegram, ataupun bot Discord. Tersedia dashboard yang rapi untuk
+              mengelola API key, memantau usage, dan menjalankan layanan dengan lebih mudah.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <a
@@ -260,19 +260,22 @@ export default async function HomePage() {
             <article className="rounded-2xl border border-zinc-200 bg-white/80 p-5 transition-transform duration-200 hover:-translate-y-0.5 dark:border-zinc-800 dark:bg-zinc-900/70">
               <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Fast Integration</p>
               <p className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                Dokumentasi clean, auth sederhana, dan endpoint konsisten biar tim kamu bisa deploy lebih cepat.
+                Endpoint siap pakai untuk bot WhatsApp, Telegram, dan Discord dengan struktur request yang
+                konsisten agar proses integrasi jadi lebih cepat.
               </p>
             </article>
             <article className="rounded-2xl border border-zinc-200 bg-white/80 p-5 transition-transform duration-200 hover:-translate-y-0.5 dark:border-zinc-800 dark:bg-zinc-900/70">
               <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Flexible Plans</p>
               <p className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                Upgrade dari FREE ke PAID/RESELLER kapan saja sesuai kebutuhan traffic dan skala bisnis.
+                Mulai dari FREE untuk testing, lalu upgrade ke PAID atau RESELLER kapan saja sesuai kebutuhan
+                traffic dan skala bisnis.
               </p>
             </article>
             <article className="rounded-2xl border border-zinc-200 bg-white/80 p-5 transition-transform duration-200 hover:-translate-y-0.5 dark:border-zinc-800 dark:bg-zinc-900/70">
               <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Production Security</p>
               <p className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                API key terisolasi, autentikasi aman, dan observability siap untuk penggunaan harian.
+                API key dikelola secara aman, akses endpoint terkontrol, dan monitoring siap untuk kebutuhan
+                penggunaan harian.
               </p>
             </article>
           </div>
