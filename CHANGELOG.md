@@ -1,0 +1,660 @@
+# Changelog
+
+## 2026-02-26
+
+### Manual Billing Flow (User + Admin)
+- Added user-facing manual billing page:
+  - `app/dashboard/billing/page.tsx`
+  - integrated into sidebar (`Billing`)
+- Added new billing UI component:
+  - `components/BillingPanel.tsx`
+  - create invoice for `PAID` / `RESELLER`
+  - upload payment proof (image)
+  - cancel unpaid invoice
+  - responsive invoice history cards + status badges
+  - integrated payment instruction panel:
+    - QRIS preview (`/public/payment/QRIS/JzQRIS.jpg`) + download button
+    - e-wallet options (GO-PAY / Shopee-Pay / DANA) with hidden phone by default
+    - per-wallet `Lihat` and `Copy` actions for secure contact reveal
+  - custom payment-method dropdown with brand assets:
+    - `/public/payment/methods/qris.svg`
+    - `/public/payment/methods/gopay.svg`
+    - `/public/payment/methods/shopeepay.svg`
+    - `/public/payment/methods/dana.svg`
+  - dynamic method detail:
+    - QRIS selected -> show QR image card
+    - GO-PAY / Shopee-Pay / DANA selected -> show masked wallet number with reveal/copy
+  - payment instruction panel now hidden until at least one `UNPAID` invoice exists
+- Added user billing APIs:
+  - `GET /api/billing/invoices` (own invoice list + payment guide)
+  - `POST /api/billing/invoices` (create manual invoice)
+  - `POST /api/billing/invoices/[invoiceId]/submit` (submit payment proof)
+  - `POST /api/billing/invoices/[invoiceId]/cancel` (cancel unpaid invoice)
+- Added secure local storage helper for payment proof uploads:
+  - `lib/payment-proof-storage.ts`
+  - path: `public/uploads/payment-proofs`
+  - constraints: JPG/PNG/WEBP, max 4MB
+- Added billing utility helper:
+  - `lib/billing.ts` for plan price map + plan rank + invoice period helper
+- Updated dashboard purchase CTA:
+  - purchase links now go to `/dashboard/billing?plan=PAID|RESELLER`
+- Updated superadmin billing table:
+  - now displays payment method + proof link for faster verification
+- Billing hardening:
+  - when invoice status changes to `PAID`, active subscriptions are closed first to prevent multi-active subscription state
+
+## 2026-02-25
+
+### API Key Reveal: Google Login Support
+- Fixed `Manage API KEY` reveal flow for users authenticated via Google OAuth.
+- Added auth provider marker into session/JWT:
+  - `session.user.authProvider`
+  - `token.authProvider`
+- Updated reveal API behavior (`POST /api/api-keys/reveal`):
+  - `credentials` sessions still require password verification.
+  - `google` sessions use secure active-session verification (no local password prompt).
+- Updated API key reveal modal UX:
+  - Dynamic verification mode label (`password` vs `google session`).
+  - Password field is hidden for Google-authenticated users.
+- Updated `dashboard/api-keys` page wiring to pass provider context into `ApiKeysManager`.
+
+## 2026-02-23
+
+### Super Admin Control Center (Phase 2)
+- Added new Prisma models and enums for centralized operations:
+  - `BillingInvoice`
+  - `UserSubscription`
+  - `SystemSetting`
+  - `AdminAuditLog`
+  - `BillingInvoiceStatus`
+  - `SubscriptionStatus`
+- Added `maintenanceNote` to `ApiEndpoint` for maintenance messaging.
+- Added migration:
+  - `prisma/migrations/20260223190000_superadmin_control_center/migration.sql`
+
+### New Admin APIs
+- Added superadmin overview endpoint:
+  - `GET /api/admin/overview`
+- Added global API key management endpoints:
+  - `GET /api/admin/api-keys`
+  - `POST /api/admin/api-keys/bulk-revoke`
+- Added billing endpoints:
+  - `GET /api/admin/billing/invoices`
+  - `POST /api/admin/billing/invoices`
+  - `PATCH /api/admin/billing/invoices/[invoiceId]`
+- Added subscription control endpoint:
+  - `PATCH /api/admin/subscriptions/[userId]`
+- Added system settings endpoints:
+  - `GET /api/admin/settings`
+  - `PATCH /api/admin/settings/[key]`
+- Added audit log endpoint:
+  - `GET /api/admin/audit-logs`
+
+### Admin Security & Governance
+- Added reusable admin helpers:
+  - `lib/admin-audit.ts` for structured audit logging with IP/User-Agent metadata.
+  - `lib/admin-rate-limit.ts` for per-admin action throttling.
+  - `lib/admin-helpers.ts` for pagination/sort/boolean parsing and reason schema.
+- Standardized sensitive admin actions to require `reason` (minimum 8 chars).
+- Hardened admin API key creation endpoint with:
+  - reason validation
+  - rate limit
+  - audit logging
+  - dynamic limit rules from `SystemSetting`
+- Extended API key patch endpoint to support `label` updates.
+
+### Dynamic System Controls
+- Added runtime settings validation and normalization:
+  - `normalizeSystemSettingValue(...)`
+  - supported numeric/string/boolean setting types with limits
+- Connected core behavior to settings:
+  - register default API limit now reads `FREE_DAILY_LIMIT`
+  - referral bonus now reads `REFERRAL_BONUS_PER_INVITE`
+  - API key creation limits now use reseller/settings overrides
+- Updated dashboard provisioning path to use settings-aware default API key limits.
+
+### Dashboard / Frontend
+- Refactored superadmin page to client-side control center loading:
+  - `app/dashboard/admin/page.tsx`
+  - `components/SuperAdminPanel.tsx`
+- New panel structure supports tabbed control surfaces:
+  - Overview
+  - Users
+  - API Keys
+  - Endpoints
+  - Billing
+  - Settings
+  - Audit Log
+- Updated admin APIs list response to include maintenance note and summary stats.
+
+### Next.js 16 Runtime Update
+- Migrated routing guard from deprecated `middleware.ts` to `proxy.ts` to remove warning:
+  - `proxy.ts`
+
+## 2026-02-22
+
+### Core Product Flow
+- Finalized MVP flow: `landing -> register -> login -> dashboard`.
+- Added dedicated dashboard pages:
+  - `/dashboard`
+  - `/dashboard/apis`
+  - `/dashboard/api-keys`
+  - `/dashboard/referral`
+  - `/dashboard/admin` (SUPERADMIN only)
+- Enforced protected dashboard routing with middleware + role guard for superadmin page.
+
+### Authentication & Security
+- Implemented NextAuth Credentials auth with Prisma user lookup and bcrypt password verification.
+- Added JWT session callbacks to carry `user.id`, `user.plan`, and `user.role`.
+- Kept secure API key reveal flow with password verification endpoint:
+  - `POST /api/api-keys/reveal`
+- Added blocked-account enforcement across auth/session checks.
+- Added real-time account status polling in dashboard layout:
+  - `GET /api/account/status`
+- Added blocked account modal/notification in dashboard (for users already logged in and then blocked).
+
+### Database & Prisma
+- Expanded `User` model:
+  - `role` (`USER`, `SUPERADMIN`)
+  - `isBlocked`
+  - `blockedAt`
+  - `banUntil`
+  - `banReason`
+  - referral fields (`referralCode`, `referredById`, `referralCount`, `referralBonusDaily`)
+- Added `ApiEndpoint` model for API marketplace status control.
+- Added `ApiEndpointStatus` enum:
+  - `ACTIVE`
+  - `NON_ACTIVE`
+  - `MAINTENANCE`
+- Added migration: `prisma/migrations/20260222153200_ban_apiendpoint_update/migration.sql`
+  - Non-destructive migration to add user blocking/referral columns and `ApiEndpoint` table.
+  - Keeps migration workflow compatible with existing dev database state.
+- Existing models retained and extended usage:
+  - `ApiKey`
+  - `UsageLog`
+
+### Referral System
+- Added unique referral code generation on register.
+- Register now accepts optional `referralCode`.
+- Valid referral increments referrer stats and bonus limit.
+- Added referral dashboard panel with:
+  - copyable referral link
+  - referral totals
+  - bonus limit display
+  - responsive chart with range filters:
+    - `1D`, `7D`, `1M`, `6M`, `1Y`
+
+### API Key Management
+- Added API key creation endpoint:
+  - `POST /api/api-keys/create`
+- Added API key revoke endpoint:
+  - `POST /api/api-keys/[apiKeyId]/revoke`
+- Updated API key manager UI to responsive data table.
+- Added reseller quota visibility:
+  - created count
+  - remaining create quota
+  - active key count
+- Enforced role/plan rules:
+  - Reseller max 25 keys
+  - Reseller max 500 daily limit per key
+
+### REST API Catalog & Endpoint Status
+- Standardized API path usage to `/api/country-time`.
+- Added new endpoint `/api/soundclouddl` (SoundCloud downloader via downcloudme source extraction).
+- Added new endpoint `/api/ytdl` (YouTube video/audio downloader via SaveTube decryption flow).
+- Added new endpoint `/api/spotifydl` (Spotify song downloader).
+- Added new endpoint `/api/spotify-search` (Spotify track search).
+- Added new endpoint `/api/tri-check` (Tri SIM status checker by MSISDN).
+- Added new endpoint `/api/pindown` (Pinterest downloader via pindown.io).
+- Added new endpoint `/api/kodepos-check` (Kode Pos checker Indonesia).
+- Added new endpoint `/api/dailymotiondl` (Dailymotion downloader via SaveTheVideo API).
+- Added new endpoint `/api/cnnnews` (latest CNN Indonesia news scraper).
+- Added new endpoint `/api/tiktokdl` (TikTok video/photo/audio downloader via TikTokio parser).
+- Added new endpoint `/api/apkpuredl` (APKPure downloader/searcher with latest APK link output).
+- Added new endpoint `/api/sfilemobidl` (Sfile.mobi downloader with file metadata + direct link).
+- Added new endpoint `/api/stickerly-search` (Sticker.ly pack/sticker searcher).
+- Added new endpoint `/api/genshin-profile` (stalk profile Genshin/HSR/ZZZ via UID from Enka Network).
+- Added new endpoint `/api/info-loker` (informasi lowongan kerja berdasarkan pekerjaan + kota).
+- Added new endpoint `/api/info-imei` (informasi status IMEI dari source imei.info).
+- Added new endpoint `/api/search-telech` (mencari channel Telegram berdasarkan keyword).
+- Added new endpoint `/api/smuledl` (Smule downloader audio/video).
+- Added server-side API catalog seeding/sync utilities.
+- Added public status route for docs/status checks:
+  - `GET /api/apis/status`
+- Updated `/api/country-time` service to enforce endpoint status:
+  - reject when `NON_ACTIVE`
+  - reject when `MAINTENANCE`
+- Added `/api/soundclouddl` service with:
+  - SoundCloud URL validation
+  - URL canonicalization (remove tracking query/hash from SoundCloud links)
+  - API key and banned-user checks
+  - daily usage consumption and `remaining_limit`
+  - parsed downloadable track links (playlist format + single-track `fastDownloadBtn` fallback)
+- Added `/api/ytdl` service with:
+  - YouTube URL validation (`youtube.com`, `youtu.be`)
+  - SaveTube CDN discovery + encrypted info decryption (AES-CBC)
+  - supports `downloadType` (`video` / `audio`) and `quality`
+  - supports `onlyInfo` mode and direct `key` usage
+  - API key and banned-user checks
+  - daily usage consumption and `remaining_limit`
+  - fixed source failure handling so DNS/network errors (`ENOTFOUND`, timeout, connection reset) return proper JSON error instead of 500 crash
+- Added `/api/spotify-search` service with:
+  - Spotify smart search by `query` (via SpotiDownloader session token)
+  - optional `limit` (default 20, max 50) for result slicing
+  - Turnstile token generation via `zencf`
+  - normalized API key and banned-user checks
+  - daily usage consumption and `remaining_limit`
+- Added `/api/spotifydl` service with:
+  - input support for Spotify track URL or 22-char track ID
+  - SpotiDownloader token/session + download lookup flow
+  - optional `stream=true` to proxy audio file directly from source
+  - API key and banned-user checks
+  - daily usage consumption and `remaining_limit`
+- Added `/api/tri-check` service with:
+  - MSISDN validation
+  - Tri upstream request proxy (`tri.co.id/api/v1/information/sim-status`)
+  - API key and banned-user checks
+  - daily usage consumption and `remaining_limit`
+  - anonymized output for sensitive fields (`msisdn` and `iccid`)
+- Added `/api/pindown` service with:
+  - Pinterest URL validation
+  - dynamic token/session bootstrap from pindown page (no static token dependency)
+  - parsed downloadable media links from `dl.pincdn.app`
+  - API key and banned-user checks
+  - daily usage consumption and `remaining_limit`
+- Added `/api/kodepos-check` service with:
+  - query validation (minimum 3 characters)
+  - data aggregation from `kodepos.co.id` datasets (`provinsi`, `kota`, `kecamatan`, `kelurahan`)
+  - formatted structured search results by kelurahan/kecamatan/kota/provinsi
+  - in-memory TTL cache for upstream dataset fetch
+  - API key and banned-user checks
+  - daily usage consumption and `remaining_limit`
+- Added `/api/dailymotiondl` service with:
+  - Dailymotion URL validation
+  - SaveTheVideo task API integration (`/tasks`) for info extraction
+  - pending task polling support
+  - parsed output (`title`, `duration`, `thumbnail`, `formats`)
+  - source rate-limit handling (429 passthrough message)
+  - API key and banned-user checks
+  - daily usage consumption and `remaining_limit`
+- Added `/api/cnnnews` service with:
+  - homepage scraping from `cnnindonesia.com`
+  - list extraction + detail scraping for top 3 articles
+  - structured output (`news` + `detail` with content/tags)
+  - API key and banned-user checks
+  - daily usage consumption and `remaining_limit`
+- Added `/api/tiktokdl` service with:
+  - TikTok URL validation (`tiktok.com`, `vt.tiktok.com`, `vm.tiktok.com`)
+  - TikTokio HTML parsing for title/cover/image grid/video links/mp3
+  - support output untuk no watermark video, no watermark HD, watermark video, dan mp3/audio
+  - API key and banned-user checks
+  - daily usage consumption and `remaining_limit`
+- Added `/api/apkpuredl` service with:
+  - APKPure search by `query` with optional `limit`
+  - Cloudflare bypass using `cloudscraper` for APKPure source endpoint
+  - fallback scrape from `apkpure.net/search` when API endpoint is blocked/challenged
+  - output enrichment (`downloadUrlFile` latest APK by packageName)
+  - API key and banned-user checks
+  - daily usage consumption and `remaining_limit`
+- Added `/api/sfilemobidl` service with:
+  - sfile.mobi URL validation
+  - metadata extraction (`name`, `uploaded_by`, `uploaded_at`, `downloads`, `file_type`)
+  - two-step download page parsing with session cookie + script extraction (`sf = "..."`)
+  - API key and banned-user checks
+  - daily usage consumption and `remaining_limit`
+- Added `/api/stickerly-search` service with:
+  - Sticker.ly smart search by `keyword` with optional `limit`
+  - normalized output for `resourceFiles` and `resourceZip` into absolute URLs
+  - API key and banned-user checks
+  - daily usage consumption and `remaining_limit`
+- Added `/api/genshin-profile` service with:
+  - UID validation (6-16 digits)
+  - Enka Network profile scraping (`playerInfo`, character list, detailed character card data)
+  - API key and banned-user checks
+  - daily usage consumption and `remaining_limit`
+- Added `/api/info-loker` service with:
+  - query validation (`pekerjaan`, `kota`, optional `jumlah` max 25)
+  - JobStreet/SEEK search integration (`jobsearch-api.cloud.seek.com.au/v5/search`)
+  - normalized job output (`title`, `company`, `location`, `listing_date`, `salary`, `job_url`)
+  - API key and banned-user checks
+  - daily usage consumption and `remaining_limit`
+- Added `/api/info-imei` service with:
+  - IMEI validation (14-17 digit)
+  - source integration (`dash.imei.info/api/check/0`)
+  - source API key from env (`IMEI_API_KEY`)
+  - API key and banned-user checks
+  - daily usage consumption and `remaining_limit`
+- Added `/api/search-telech` service with:
+  - query validation (`query` wajib, `limit` opsional max 30)
+  - scraping search result dari `en.tgramsearch.com/search`
+  - auto-resolve link `/join/...` ke link final `https://t.me/...`
+  - API key and banned-user checks
+  - daily usage consumption and `remaining_limit`
+- Added `/api/smuledl` service with:
+  - Smule URL validation
+  - metadata + download parsing dari `sownloader.com`
+  - output audio (`m4a`, `mp3`) dan video (`mp4`) jika tersedia
+  - API key and banned-user checks
+  - daily usage consumption and `remaining_limit`
+- Added `/api/tiktokdl` into API catalog seed + docs list for dashboard/admin endpoint status control.
+- Added `/api/ytdl` into API catalog seed + docs list for dashboard/admin endpoint status control.
+- Added `/api/spotifydl` into API catalog seed + docs list for dashboard/admin endpoint status control.
+- Added `/api/spotify-search` into API catalog seed + docs list for dashboard/admin endpoint status control.
+- Added `/api/apkpuredl` into API catalog seed + docs list for dashboard/admin endpoint status control.
+- Added `/api/sfilemobidl` into API catalog seed + docs list for dashboard/admin endpoint status control.
+- Added `/api/stickerly-search` into API catalog seed + docs list for dashboard/admin endpoint status control.
+- Added `/api/genshin-profile` into API catalog seed + docs list for dashboard/admin endpoint status control.
+- Added `/api/info-loker` into API catalog seed + docs list for dashboard/admin endpoint status control.
+- Added `/api/info-imei` into API catalog seed + docs list for dashboard/admin endpoint status control.
+- Added `/api/search-telech` into API catalog seed + docs list for dashboard/admin endpoint status control.
+- Added `/api/smuledl` into API catalog seed + docs list for dashboard/admin endpoint status control.
+- Added status loading checks in REST API list UI.
+- Added copy buttons for:
+  - Example request
+  - Success response JSON
+  - Error response JSON
+- Upgraded `/api/apis/status` with health monitoring snapshot payload:
+  - `operationalStatus` (from admin endpoint status)
+  - `healthStatus` (`UP`/`DEGRADED`/`DOWN`/`CHECKING`)
+  - `responseTimeMs`, `httpStatus`, `lastCheckedAt`, `healthError`
+  - `checkedAt` snapshot timestamp
+- Added server-side API health monitor:
+  - lightweight route checks using cached snapshots
+  - timeout guard per endpoint
+  - bounded concurrency (batched checks, not flood all endpoints simultaneously)
+  - refresh support via `GET /api/apis/status?force=1`
+
+### Super Admin Capabilities
+- Added superadmin user management APIs:
+  - `GET /api/admin/users`
+  - `PATCH /api/admin/users/[userId]`
+- Added superadmin API key management APIs:
+  - `PATCH /api/admin/api-keys/[apiKeyId]`
+  - `POST /api/admin/users/[userId]/api-keys/create`
+- Added superadmin API endpoint status APIs:
+  - `GET /api/admin/apis`
+  - `PATCH /api/admin/apis/[apiId]`
+- Superadmin panel now includes responsive data tables for:
+  - user management (role, plan, block/unblock, ban reason/time)
+  - per-user API key management
+  - API endpoint status control
+- Implemented ban time input semantics:
+  - `-1` means permanent suspended
+  - positive integer means temporary ban in minutes
+
+### Realtime Ban / Blocking Behavior
+- If a user is blocked while currently logged in, dashboard now detects it and shows blocking message.
+- Blocked users are denied protected business actions through server checks.
+- Blocked users' API keys are rejected by runtime API access checks.
+- Temporary ban expiration auto-clears block state server-side when expired.
+
+### UI/UX Improvements
+- Landing page refined with icon-rich modern sections and support contacts.
+- Dark-mode-only strategy maintained (no theme toggle) and hard-locked from layout/CSS.
+- Dashboard layout refactor:
+  - fixed sidebar (does not scroll with content)
+  - sticky topbar
+  - icon-based navigation
+  - improved mobile behavior
+- REST API list made compact/collapsible and responsive.
+- REST API list now grouped by category:
+  - Downloader
+  - Downloader Checker
+  - Checker Informasi
+  - Informasi
+- Added status summary cards in REST API list:
+  - Total REST API
+  - Total Active API
+  - Total Maintenance API
+  - Total Deactive API
+- Added Font Awesome style icons (via `react-icons/fa`) for category headers and summary cards.
+- REST API list now supports advanced discovery controls:
+  - search (`name/path/description`)
+  - filters (`category`, `operational status`, `health`, `deprecated`)
+  - sorting (`name`, `path`, `latency`, `updated`)
+- REST API list now supports pagination:
+  - configurable items per page (`6`, `12`, `24`)
+  - page navigator (`Prev`, `Next`, numbered pages)
+  - page summary (`showing X-Y of Z`)
+- REST API list state is now persisted in URL query params:
+  - `q`, `category`, `operational`, `health`, `deprecated`, `sort`, `page`, `pageSize`
+  - allows shareable filtered/sorted views and reload-safe state
+- REST API list now displays dual status and runtime diagnostics per endpoint:
+  - operational badge
+  - health badge
+  - latency badge
+  - last checked indicator
+- REST API list now supports per-endpoint health refresh:
+  - new `Re-check` button in each endpoint row
+  - calls single-endpoint check (`/api/apis/status?slug=...&force=1`)
+  - avoids triggering global health check for all endpoints
+- REST API list endpoint detail now includes:
+  - `Try API` mini form (live request runner + response viewer)
+  - `Code Snippet` tab (`curl`, JavaScript `fetch`, Python `requests`)
+  - `Error Map` tab (HTTP error meaning + action)
+  - `Version & Updates` tab (version, update date, changelog, deprecation marker)
+- Manage API key and admin pages adapted to mobile/desktop table scrolling.
+- Dashboard home enriched to reduce "empty" feel while staying responsive:
+  - added `Quick Actions` block (`Create API Key`, `Open API Docs`, `Test /api/country-time`, `Copy Base URL`)
+  - added API key status panel with masked key preview + example request
+  - added `Recent Activity` table (usage snapshot + key lifecycle events)
+  - added `System Alert` panel (quota near limit, maintenance signal, healthy fallback)
+  - added contextual `Plan Insight` card with upgrade recommendation by current plan
+  - kept `Purchase Role` behavior with owned/included/upgrade states
+- Added global modern toast notification system:
+  - fixed position `top-right` for desktop/mobile with safe-area support
+  - smooth enter/exit animation
+  - supports close button (`X`)
+  - supports swipe-to-dismiss on mobile
+  - integrated to auth flow, API key management, REST API list copy actions, referral copy, quick actions copy, and superadmin actions
+- Added confirmation modal for API key revoke in user dashboard:
+  - `Revoke` button now opens approval popup first
+  - revoke action executes only after `Confirm Revoke`
+- Fixed API key auto-provisioning bug on dashboard:
+  - dashboard user loader no longer auto-creates default API key when all keys are revoked
+  - revoking all keys now keeps keys revoked as expected (no silent re-create)
+- Hardened API key lifecycle to prevent user lockout:
+  - revoke endpoint now blocks revoking the last active key for plans/roles that cannot create keys
+  - API key create quota now uses **active key count** (not total historical revoked count), so reseller can rotate keys safely
+  - API key manager remaining quota UI now follows active-key quota logic
+- Added new user `Profile` center page and menu:
+  - route: `/dashboard/profile`
+  - sidebar now includes `Profile` with icon
+  - topbar now includes profile avatar quick access button
+  - profile page includes:
+    - editable display name
+    - plan/role/status/account info
+    - stats cards (`total api key`, `active api key`, `total request`, `requests today`)
+    - password change form
+- Added profile avatar upload (local storage) with crop flow:
+  - crop modal with 1:1 framing and circular avatar preview mask
+  - local storage path: `public/uploads/avatars`
+  - avatar APIs:
+    - `POST /api/account/avatar` upload/update avatar
+    - `DELETE /api/account/avatar` remove avatar
+  - profile APIs:
+    - `GET /api/account/profile`
+    - `PATCH /api/account/profile`
+    - `POST /api/account/password`
+  - server-side avatar safety:
+    - max size 2MB
+    - allowed mime: JPG/PNG/WEBP
+    - old managed avatar file cleanup on replace/delete
+- Added Prisma update for profile avatar:
+  - `User.avatarUrl` nullable string column
+  - migration: `prisma/migrations/20260223203000_profile_avatar/migration.sql`
+- Aligned Prisma column mapping with current production-like DB types:
+  - `ApiEndpoint.maintenanceNote` mapped to `@db.Text`
+  - `BillingInvoice.notes` mapped to `@db.Text`
+  - purpose: avoid risky type coercion on emergency release via `db push`
+- Forced Prisma client engine to binary in schema generator for runtime stability:
+  - `generator client { engineType = "binary" }`
+  - purpose: prevent accidental `engine=none` generation and `prisma://` runtime mismatch
+- Added Google OAuth support to authentication flow (NextAuth v5):
+  - provider: `next-auth/providers/google` (enabled only when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` exist)
+  - Google sign-in now auto-provisions local user safely:
+    - creates `User` with default `FREE` plan and `USER` role if email not found
+    - generates unique referral code
+    - creates default active API key with FREE daily limit from system settings
+  - added ban enforcement for Google auth:
+    - blocked users are redirected to `/login?blocked=1`
+    - unverified Google email is denied
+  - JWT/session enrichment remains consistent for both credentials and Google:
+    - injects `user.id`, `user.plan`, and `user.role`
+- Updated auth UI for Google support:
+  - `/login` now has `Continue with Google` button + OAuth error handling
+  - `/register` now has `Continue with Google` button + OAuth error handling
+  - existing email/password register/login flow remains available as fallback
+- Redesigned auth visual experience (`/login` and `/register`):
+  - added modern split layout with decorative background glows and marketing showcase panel
+  - added icon-based feature cards and compact stat cards for stronger first impression
+  - improved mobile presentation with dedicated compact intro blocks
+  - upgraded `AuthCard` styling to dark-only premium card with subtle accent line and stronger glass effect
+- Enhanced `/api/spotify-search` response payload:
+  - now includes normalized `tracks` array in addition to raw source `result`
+  - each normalized track now provides:
+    - `track_url` (Spotify URL)
+    - `download_endpoint` (`/api/spotifydl?id=...&apikey=...`)
+    - `download_stream_endpoint` (`/api/spotifydl?id=...&apikey=...&stream=true`)
+  - also normalizes basic metadata (`id`, `title`, `artists`, `album`, `duration_ms`, `image`) when available
+- Reworked `/api/ytdl` source logic:
+  - migrated to `embed.dlsrv.online` + `r.jina.ai` flow
+  - now returns merged multi-format output (`info` + `formats`) from one request
+  - supports direct YouTube URL or 11-char video ID input
+- Added new endpoint `/api/instadl` (Instagram Downloader):
+  - source flow uses `snapinsta.to` (`/api/userverify` + `/api/ajaxSearch`)
+  - includes encrypted payload extraction + decrypt for v2 response
+  - supports video/photo/profile-picture result parsing
+  - integrated with existing API key auth, daily limit usage log, ban checks, and endpoint status control
+- Hardened `/api/instadl` reliability after source-side changes:
+  - added richer request headers (`Origin`, `Referer`, `X-Requested-With`, `Accept-Language`)
+  - added token fallback reader (`token`, `cftoken`, `cfToken`)
+  - added `v2 -> v1` automatic search fallback
+  - improved encrypted payload extraction patterns and raw-html fallback
+  - improved parser robustness for `download-items` variants and fallback anchor extraction
+  - upgraded 502 diagnostics to include compact source failure hint for faster debugging
+- Added new endpoint `/api/temp-mail` (Temp-Mail Generator/Inbox):
+  - action-based flow:
+    - `action=generate` -> creates mailbox + returns `token` and `email`
+    - `action=inbox&token=...` -> reads mailbox messages with detail fetch per message
+  - source integration uses `cloudscraper` with retry + exponential backoff
+  - integrated with API key auth, ban checks, daily limit usage log, and endpoint status control
+- Added new endpoint `/api/info-krl` (Info Jadwal Kereta API):
+  - action-based mode:
+    - `action=stations` (list/search station)
+    - `action=fare` (tarif antar stasiun: `from` + `to`)
+    - `action=schedule` (jadwal stasiun: `station` + `timefrom` + `timeto`)
+  - source integration to KRL partner API (`/krl-station`, `/fare`, `/schedule`)
+  - integrated with API key auth, ban checks, daily limit usage log, and endpoint status control
+  - requires server env:
+    - `KRL_API_TOKEN`
+    - optional `KRL_API_BASE_URL` (default `https://api-partner.krl.co.id`)
+- Added new endpoint `/api/info-resi-ongkir`:
+  - unified action-based shipping utility:
+    - `action=ekspedisi` -> daftar ekspedisi
+    - `action=resi` -> lacak status resi (`resi` + `ekspedisi`)
+    - `action=ongkir` -> cek ongkir (`asal` + `tujuan` + `berat`)
+  - includes location suggestion handling for failed ongkir city lookup
+  - integrated with API key auth, ban checks, daily limit usage log, and endpoint status control
+  - docs + tutorial tab added in REST API LIST
+- Improved REST API LIST docs UX:
+  - added optional `Tutorial` tab per endpoint in accordion docs
+  - added step-by-step tutorial content for `/api/temp-mail` (generate + inbox flow)
+  - updated REST API LIST helper text to mention tutorial availability
+- Updated `.env.example`:
+  - added `GOOGLE_CLIENT_ID`
+  - added `GOOGLE_CLIENT_SECRET`
+
+### Manage API Key UX & Insights
+- Upgraded `/dashboard/api-keys` to include richer key observability and safer rotation guidance:
+  - added per-key `last used` info (derived from latest `UsageLog`)
+  - added per-key `usage 7d` total + sparkline trend
+  - added key-age based rotation indicator (`Healthy`, `Rotate soon`, `Rotate now`)
+- Added copy and discovery controls for API key management:
+  - added small `Copy` button that appears when key is revealed (`View` successful)
+  - added `Search` by label/key preview
+  - added filtering (`status`, `usage`) and sorting (`newest`, `oldest`, `usage`, `recently used`)
+  - added client pagination controls with page number navigation
+- Removed `scope` display from Manage API Key per latest UI request.
+- Improved layout responsiveness for mobile/desktop:
+  - mobile now uses stacked cards with compact actions and analytics
+  - desktop keeps full data-table view with extended columns
+  - revoke/reveal flows remain accessible and consistent in both breakpoints
+
+### Auth Captcha (Turnstile)
+- Added Cloudflare Turnstile support for auth flows:
+  - new server helper: `lib/turnstile.ts` for captcha config + token verification
+  - new public config endpoint: `GET /api/auth/captcha-config`
+  - login credentials auth now verifies `captchaToken` when captcha is enabled
+  - register endpoint now verifies `captchaToken` when captcha is enabled
+- Added superadmin global toggle setting:
+  - new system setting key: `AUTH_CAPTCHA_ENABLED` (boolean)
+  - editable from existing Super Admin `Settings` tab
+- Updated auth UI:
+  - `/login` and `/register` render Turnstile widget dynamically
+  - fallback error text shown when captcha is enabled but site key is missing
+  - captcha widget reset on failed submit
+- Updated `.env.example`:
+  - `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
+  - `TURNSTILE_SECRET_KEY`
+
+### Branding Asset Integration (Single PNG)
+- Integrated one source logo file (`JzRestAPI-Logo.png`) into app metadata and UI:
+  - copied to `public/brand/jz-logo.png` for reusable branding display
+  - added `app/icon.png`, `app/apple-icon.png`, `app/opengraph-image.png`, `app/twitter-image.png` from same source
+- Updated `app/layout.tsx` metadata:
+  - icons now point to PNG-based app icons
+  - Open Graph + Twitter image now use the provided logo asset
+- Updated landing navbar (`app/page.tsx`) to render logo image beside brand title.
+
+### Landing SEO & Performance Upgrade
+- Refactored landing (`/`) for SEO-first performance:
+  - removed server-session dependency from landing render path
+  - moved stats data source to cached helper (`revalidate: 60s`)
+  - added robust page-level metadata (canonical, robots, Open Graph, Twitter)
+- Added cached landing stats layer:
+  - new module: `lib/landing-stats.ts`
+  - caches active API, registered user, and active API key counts
+- Added structured data (JSON-LD) on landing:
+  - `Organization` + `Product/Offer` schema for FREE/PAID/RESELLER plans
+- Added technical SEO endpoints:
+  - `app/robots.ts`
+  - `app/sitemap.ts`
+- Added dynamic social preview generators:
+  - `app/opengraph-image.tsx` (1200x630)
+  - `app/twitter-image.tsx` (1200x630)
+  - both now use provided logo asset and dark-brand style
+- Updated global metadata image references to dynamic routes.
+
+### Notes For Team / Next Session
+- Run Prisma migration/generate after pulling latest schema changes.
+- Superadmin can now fully control:
+  - user role
+  - user block state and ban metadata
+  - user API keys
+  - API endpoint status (ACTIVE/NON_ACTIVE/MAINTENANCE)
+- Main production endpoints to check:
+  - `/api/register`
+  - `/api/country-time`
+  - `/api/soundclouddl`
+  - `/api/ytdl`
+  - `/api/spotify-search`
+  - `/api/spotifydl`
+  - `/api/tri-check`
+  - `/api/pindown`
+  - `/api/kodepos-check`
+  - `/api/dailymotiondl`
+  - `/api/cnnnews`
+  - `/api/tiktokdl`
+  - `/api/apkpuredl`
+  - `/api/sfilemobidl`
+  - `/api/stickerly-search`
+  - `/api/genshin-profile`
+  - `/api/info-loker`
+  - `/api/info-imei`
+  - `/api/search-telech`
+  - `/api/smuledl`
+  - `/api/apis/status`
+  - `/api/account/status`
+  - `/api/api-keys/*`
+  - `/api/admin/*`

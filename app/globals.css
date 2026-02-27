@@ -1,0 +1,98 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root,
+html,
+body {
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top right, rgba(63, 63, 70, 0.28), transparent 46%),
+    radial-gradient(circle at bottom left, rgba(63, 63, 70, 0.2), transparent 42%),
+    rgb(9 9 11);
+  color: rgb(244 244 245);
+  font-family: var(--font-geist), "Segoe UI", sans-serif;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.45s ease-out both;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.45s ease-out both;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(18px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateX(18px) scale(0.98);
+  }
+}
+
+.animate-toast-in {
+  animation: toast-in 0.22s ease-out both;
+}
+
+.animate-toast-out {
+  animation: toast-out 0.18s ease-in both;
+}

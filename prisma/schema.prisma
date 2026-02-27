@@ -1,0 +1,175 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "binary"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Plan {
+  FREE
+  PAID
+  RESELLER
+}
+
+enum UserRole {
+  USER
+  SUPERADMIN
+}
+
+enum ApiKeyStatus {
+  ACTIVE
+  REVOKED
+}
+
+enum ApiEndpointStatus {
+  ACTIVE
+  NON_ACTIVE
+  MAINTENANCE
+}
+
+enum BillingInvoiceStatus {
+  UNPAID
+  PAID
+  EXPIRED
+  CANCELED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELED
+}
+
+model User {
+  id                   String           @id @default(cuid())
+  name                 String?
+  avatarUrl            String?
+  email                String           @unique
+  passwordHash         String
+  plan                 Plan             @default(FREE)
+  role                 UserRole         @default(USER)
+  isBlocked            Boolean          @default(false)
+  blockedAt            DateTime?
+  banUntil             DateTime?
+  banReason            String?
+  referralCode         String?          @unique
+  referredById         String?
+  referralBonusDaily   Int              @default(0)
+  referralCount        Int              @default(0)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  referredBy           User?            @relation("UserReferrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals            User[]           @relation("UserReferrals")
+  apiKeys              ApiKey[]
+  subscriptions        UserSubscription[] @relation("UserSubscriptions")
+  invoices             BillingInvoice[] @relation("UserInvoices")
+  approvedInvoices     BillingInvoice[] @relation("InvoiceApprover")
+  updatedSubscriptions UserSubscription[] @relation("SubscriptionUpdater")
+  systemSettings       SystemSetting[]  @relation("SettingUpdater")
+  adminAuditLogs       AdminAuditLog[]  @relation("AuditActor")
+}
+
+model ApiKey {
+  id         String       @id @default(cuid())
+  userId     String
+  key        String       @unique
+  label      String?
+  status     ApiKeyStatus @default(ACTIVE)
+  dailyLimit Int          @default(100)
+  createdAt  DateTime     @default(now())
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usageLogs  UsageLog[]
+}
+
+model UsageLog {
+  id            String   @id @default(cuid())
+  apiKeyId      String
+  date          DateTime @db.Date
+  requestsCount Int      @default(0)
+  apiKey        ApiKey   @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
+  @@unique([apiKeyId, date])
+}
+
+model ApiEndpoint {
+  id              String            @id @default(cuid())
+  slug            String            @unique
+  name            String
+  path            String            @unique
+  description     String
+  sampleQuery     String
+  status          ApiEndpointStatus @default(ACTIVE)
+  maintenanceNote String?           @db.Text
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+}
+
+model BillingInvoice {
+  id            String              @id @default(cuid())
+  userId        String
+  plan          Plan
+  amount        Int
+  currency      String              @default("IDR")
+  status        BillingInvoiceStatus @default(UNPAID)
+  periodStart   DateTime
+  periodEnd     DateTime
+  paymentMethod String?
+  paymentProofUrl String?
+  notes         String?             @db.Text
+  approvedById  String?
+  approvedAt    DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  user          User                @relation("UserInvoices", fields: [userId], references: [id], onDelete: Cascade)
+  approvedBy    User?               @relation("InvoiceApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@index([userId, status, createdAt])
+}
+
+model UserSubscription {
+  id              String            @id @default(cuid())
+  userId          String
+  plan            Plan
+  status          SubscriptionStatus @default(ACTIVE)
+  startAt         DateTime
+  endAt           DateTime?
+  autoDowngradeTo Plan              @default(FREE)
+  updatedById     String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  user            User              @relation("UserSubscriptions", fields: [userId], references: [id], onDelete: Cascade)
+  updatedBy       User?             @relation("SubscriptionUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@index([userId, status, endAt])
+}
+
+model SystemSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  valueJson   Json
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  updatedBy   User?    @relation("SettingUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+}
+
+model AdminAuditLog {
+  id         String   @id @default(cuid())
+  actorUserId String
+  action     String
+  targetType String
+  targetId   String
+  reason     String
+  beforeJson Json?
+  afterJson  Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  actorUser  User     @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: Cascade)
+
+  @@index([actorUserId, action, createdAt])
+  @@index([targetType, targetId, createdAt])
+}
