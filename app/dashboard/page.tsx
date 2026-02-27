@@ -352,15 +352,46 @@ export default async function DashboardPage() {
           ))}
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-[1.6fr_1fr]">
-          <section className="rounded-2xl border border-zinc-200 bg-white/80 p-5 dark:border-zinc-800/80 dark:bg-zinc-900/70">
-            <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+        <div className="grid min-w-0 gap-4 xl:grid-cols-[1.6fr_1fr]">
+          <section className="min-w-0 rounded-2xl border border-zinc-200 bg-white/80 p-5 dark:border-zinc-800/80 dark:bg-zinc-900/70">
+            <div className="mb-4 flex flex-col items-start justify-between gap-1.5 sm:flex-row sm:items-end sm:gap-2">
               <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Recent Activity</h3>
               <p className="text-xs text-zinc-500 sm:text-sm">Aktivitas penggunaan terbaru di akun kamu.</p>
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700">
-              <table className="min-w-[640px] w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
+            <div className="space-y-2 md:hidden">
+              {recentActivities.length === 0 ? (
+                <article className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-950/40">
+                  <p className="text-sm text-zinc-500">
+                    Belum ada activity. Mulai request endpoint untuk melihat analytics.
+                  </p>
+                </article>
+              ) : (
+                recentActivities.map((activity) => (
+                  <article
+                    key={activity.id}
+                    className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-950/40"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{activity.action}</p>
+                      <span
+                        className={[
+                          "inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                          activityStatusClasses[activity.status],
+                        ].join(" ")}
+                      >
+                        {activity.status}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">{activity.detail}</p>
+                    <p className="mt-2 text-[11px] text-zinc-500">{formatDateTime(activity.time)}</p>
+                  </article>
+                ))
+              )}
+            </div>
+
+            <div className="hidden overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 md:block">
+              <table className="w-full min-w-[640px] divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
                 <thead className="bg-zinc-100/80 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900/80">
                   <tr>
                     <th className="px-3 py-3 text-left">Activity</th>
@@ -400,7 +431,7 @@ export default async function DashboardPage() {
             </div>
           </section>
 
-          <div className="space-y-4">
+          <div className="min-w-0 space-y-4">
             <section className="rounded-2xl border border-zinc-200 bg-white/80 p-5 dark:border-zinc-800/80 dark:bg-zinc-900/70">
               <div className="mb-3 flex items-center gap-2">
                 <FaSignal className="text-sm text-zinc-500" />
@@ -415,7 +446,7 @@ export default async function DashboardPage() {
                     <article
                       key={alert.id}
                       className={[
-                        "rounded-xl border p-3",
+                        "overflow-hidden rounded-xl border p-3",
                         alertToneClasses[alert.tone],
                       ].join(" ")}
                     >
@@ -423,7 +454,7 @@ export default async function DashboardPage() {
                         <AlertIcon className="mt-0.5 text-sm" />
                         <div className="min-w-0">
                           <p className="text-sm font-semibold">{alert.title}</p>
-                          <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-300">{alert.description}</p>
+                          <p className="mt-1 break-words text-xs text-zinc-600 dark:text-zinc-300">{alert.description}</p>
                           {alert.href ? (
                             <Link
                               href={alert.href}
