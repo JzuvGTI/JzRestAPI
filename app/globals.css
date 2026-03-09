@@ -121,6 +121,41 @@ body {
   animation: toast-out 0.18s ease-in both;
 }
 
+@keyframes dashboard-announcement-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dashboard-announcement-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+.dashboard-announcement-in {
+  animation: dashboard-announcement-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, opacity;
+}
+
+.dashboard-announcement-out {
+  animation: dashboard-announcement-out 0.2s ease-in both;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;

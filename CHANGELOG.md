@@ -1,5 +1,45 @@
 # Changelog
 
+## 2026-03-09
+
+### Dashboard Announcement Banner System
+- Added new Prisma enums and model for announcement management:
+  - `AnnouncementTone`
+  - `AnnouncementStatus`
+  - `AnnouncementAudience`
+  - `Announcement`
+- Added dashboard announcement data helper:
+  - `lib/announcements.ts`
+  - audience-aware filtering by user `plan` and `role`
+  - active/scheduled/expired summary helpers for admin panel
+- Added dashboard announcement banner UI:
+  - `components/DashboardAnnouncements.tsx`
+  - renders on `/dashboard` only
+  - smooth slide/fade entry and dismiss animation
+  - browser-level dismiss persistence via `localStorage`
+  - optional CTA support
+- Updated dashboard page:
+  - `app/dashboard/page.tsx`
+  - announcement banner now appears under dashboard heading
+- Added super admin announcement APIs:
+  - `GET /api/admin/announcements`
+  - `POST /api/admin/announcements`
+  - `PATCH /api/admin/announcements/[announcementId]`
+  - `DELETE /api/admin/announcements/[announcementId]`
+  - includes admin audit log writes for create/update/delete
+  - announcement `version` auto-increments on edit so dismissed banners can reappear after updates
+- Added super admin announcement management UI:
+  - `components/AdminAnnouncementsSection.tsx`
+  - integrated into `components/SuperAdminPanel.tsx` as new `Announcements` tab
+  - summary cards for total/active/scheduled/expired/pinned
+  - create form + live preview
+  - inline edit/delete controls for existing announcements
+- Added global CSS motion utilities for dashboard announcement banners:
+  - `app/globals.css`
+- Updated Prisma client initialization:
+  - `lib/prisma.ts`
+  - now points directly to generated client types to keep schema/client type alignment stable after new model additions
+
 ## 2026-02-26
 
 ### Manual Billing Flow (User + Admin)

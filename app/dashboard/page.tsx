@@ -9,13 +9,28 @@ import {
 } from "react-icons/fa";
 
 import { auth } from "@/auth";
+import DashboardAnnouncements from "@/components/DashboardAnnouncements";
 import DashboardLayout from "@/components/DashboardLayout";
 import DashboardQuickActions from "@/components/DashboardQuickActions";
+import { getDashboardAnnouncementsForUser } from "@/lib/announcements";
 import { getMarketplaceApis } from "@/lib/api-endpoints";
 import { getEffectiveDailyLimit, getOrProvisionDashboardUser, getUtcDateOnly } from "@/lib/dashboard-user";
 import { PRICING_PLANS } from "@/lib/pricing-plans";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+
+type MarketplaceApi = Awaited<ReturnType<typeof getMarketplaceApis>>[number];
+type UsageLogToday = {
+  id: string;
+  requestsCount: number;
+  date: Date;
+  apiKey: {
+    id: string;
+    label: string | null;
+    status: "ACTIVE" | "REVOKED";
+    dailyLimit: number;
+  };
+};
 
 const planOrder: Record<"FREE" | "PAID" | "RESELLER", number> = {
   FREE: 0,
@@ -123,7 +138,7 @@ export default async function DashboardPage() {
   const todayMarker = new Date(today);
   todayMarker.setUTCHours(23, 59, 0, 0);
 
-  const [marketplaceApis, usageLogsToday] = await Promise.all([
+  const [marketplaceApis, usageLogsToday, dashboardAnnouncements] = await Promise.all([
     getMarketplaceApis(),
     activeApiKeyIds.length > 0
       ? prisma.usageLog.findMany({
@@ -146,9 +161,16 @@ export default async function DashboardPage() {
           },
         })
       : Promise.resolve([]),
+    getDashboardAnnouncementsForUser({
+      plan: currentUser.plan,
+      role: currentUser.role,
+    }),
   ]);
 
-  const requestsToday = usageLogsToday.reduce((total, item) => total + item.requestsCount, 0);
+  const requestsToday = usageLogsToday.reduce(
+    (total: number, item: UsageLogToday) => total + item.requestsCount,
+    0,
+  );
   const totalEffectiveLimit = activeApiKeys.reduce(
     (total, apiKey) => total + getEffectiveDailyLimit(apiKey.dailyLimit, currentUser.referralBonusDaily),
     0,
@@ -156,7 +178,7 @@ export default async function DashboardPage() {
   const remainingLimit = Math.max(totalEffectiveLimit - requestsToday, 0);
   const usagePercent = totalEffectiveLimit > 0 ? requestsToday / totalEffectiveLimit : 0;
 
-  const maintenanceApis = marketplaceApis.filter((api) => api.status === "MAINTENANCE");
+  const maintenanceApis = marketplaceApis.filter((api: MarketplaceApi) => api.status === "MAINTENANCE");
 
   const stats = [
     { label: "Requests today", value: formatNumber(requestsToday) },
@@ -165,10 +187,10 @@ export default async function DashboardPage() {
   ];
 
   const usageActivities: RecentActivity[] = usageLogsToday
-    .filter((item) => item.requestsCount > 0)
-    .sort((a, b) => b.requestsCount - a.requestsCount)
+    .filter((item: UsageLogToday) => item.requestsCount > 0)
+    .sort((a: UsageLogToday, b: UsageLogToday) => b.requestsCount - a.requestsCount)
     .slice(0, 5)
-    .map((item) => ({
+    .map((item: UsageLogToday) => ({
       id: `usage-${item.id}`,
       action: "Usage tracked",
       detail: `${item.apiKey.label || "Default Key"} memproses ${formatNumber(item.requestsCount)} request hari ini.`,
@@ -213,7 +235,7 @@ export default async function DashboardPage() {
   if (maintenanceApis.length > 0) {
     const samplePaths = maintenanceApis
       .slice(0, 2)
-      .map((api) => api.path)
+      .map((api: MarketplaceApi) => api.path)
       .join(", ");
 
     systemAlerts.push({
@@ -274,6 +296,8 @@ export default async function DashboardPage() {
           </h2>
           <p className="text-sm text-zinc-500">Ringkasan penggunaan akun kamu hari ini.</p>
         </div>
+
+        <DashboardAnnouncements announcements={dashboardAnnouncements} />
 
         <DashboardQuickActions
           baseUrl="https://api.jzuv.my.id"

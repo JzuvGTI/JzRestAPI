@@ -43,6 +43,27 @@ enum SubscriptionStatus {
   CANCELED
 }
 
+enum AnnouncementTone {
+  INFO
+  UPDATE
+  WARNING
+  CRITICAL
+}
+
+enum AnnouncementStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum AnnouncementAudience {
+  ALL
+  FREE
+  PAID
+  RESELLER
+  SUPERADMIN
+}
+
 model User {
   id                   String           @id @default(cuid())
   name                 String?
@@ -70,6 +91,7 @@ model User {
   updatedSubscriptions UserSubscription[] @relation("SubscriptionUpdater")
   systemSettings       SystemSetting[]  @relation("SettingUpdater")
   adminAuditLogs       AdminAuditLog[]  @relation("AuditActor")
+  announcementsCreated Announcement[]   @relation("AnnouncementCreator")
 }
 
 model ApiKey {
@@ -154,6 +176,31 @@ model SystemSetting {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   updatedBy   User?    @relation("SettingUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+}
+
+model Announcement {
+  id            String               @id @default(cuid())
+  title         String
+  message       String               @db.Text
+  tone          AnnouncementTone     @default(INFO)
+  status        AnnouncementStatus   @default(DRAFT)
+  audience      AnnouncementAudience @default(ALL)
+  badgeLabel    String?
+  ctaLabel      String?
+  ctaHref       String?
+  priority      Int                  @default(0)
+  isPinned      Boolean              @default(false)
+  isDismissible Boolean              @default(true)
+  startsAt      DateTime?
+  endsAt        DateTime?
+  version       Int                  @default(1)
+  createdById   String
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  createdBy     User                 @relation("AnnouncementCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([status, startsAt, endsAt])
+  @@index([audience, status, updatedAt])
 }
 
 model AdminAuditLog {

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { IconType } from "react-icons";
 import {
+  FaBullhorn,
   FaChartBar,
   FaCog,
   FaFileInvoiceDollar,
@@ -14,10 +15,11 @@ import {
   FaUsers,
 } from "react-icons/fa";
 
+import AdminAnnouncementsSection from "@/components/AdminAnnouncementsSection";
 import Button from "@/components/Button";
 import { useToast } from "@/components/ToastProvider";
 
-type TabKey = "overview" | "users" | "apiKeys" | "endpoints" | "billing" | "settings" | "audit";
+type TabKey = "overview" | "users" | "apiKeys" | "endpoints" | "billing" | "announcements" | "settings" | "audit";
 
 type Pagination = {
   page: number;
@@ -123,6 +125,7 @@ const tabs: TabConfig[] = [
   { key: "apiKeys", label: "API Keys", icon: FaKey },
   { key: "endpoints", label: "Endpoints", icon: FaServer },
   { key: "billing", label: "Billing", icon: FaFileInvoiceDollar },
+  { key: "announcements", label: "Announcements", icon: FaBullhorn },
   { key: "settings", label: "Settings", icon: FaCog },
   { key: "audit", label: "Audit Log", icon: FaHistory },
 ];
@@ -172,6 +175,7 @@ export default function SuperAdminPanel() {
     apiKeys: false,
     endpoints: false,
     billing: false,
+    announcements: false,
     settings: false,
     audit: false,
   });
@@ -318,6 +322,9 @@ export default function SuperAdminPanel() {
             ]),
           ),
         );
+      }
+      if (activeTab === "announcements") {
+        setLoadedTabs((prev) => ({ ...prev, announcements: true }));
       }
       if (activeTab === "settings") {
         const data = await fetchJson<{ settings: AdminSetting[] }>("/api/admin/settings");
@@ -1210,6 +1217,10 @@ export default function SuperAdminPanel() {
           </div>
           <p className="text-xs text-zinc-500">Total invoices loaded: {invoicesPagination.total}</p>
         </section>
+      ) : null}
+
+      {activeTab === "announcements" ? (
+        <AdminAnnouncementsSection reason={reason} onError={showError} onSuccess={showSuccess} />
       ) : null}
 
       {activeTab === "settings" ? (
