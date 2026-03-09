@@ -37,7 +37,19 @@ export default function TurnstileWidget({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
   const previousResetSignalRef = useRef(resetSignal);
-  const [scriptReady, setScriptReady] = useState(false);
+  const [scriptReady, setScriptReady] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+
+    return Boolean(window.turnstile);
+  });
+
+  useEffect(() => {
+    if (window.turnstile) {
+      setScriptReady(true);
+    }
+  }, []);
 
   useEffect(() => {
     if (!scriptReady || !window.turnstile || !containerRef.current) {
@@ -84,6 +96,7 @@ export default function TurnstileWidget({
         src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
         strategy="afterInteractive"
         onLoad={() => setScriptReady(true)}
+        onReady={() => setScriptReady(true)}
       />
       <div ref={containerRef} />
     </div>
